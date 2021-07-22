@@ -31,6 +31,10 @@
 
     .EXAMPLE
     Set-Asset -id 1 -status_id 1 -model_id 1 -name "Machine1" -CustomValues = @{ "_snipeit_os_5 = "Windows 10 Pro" }
+
+    .NOTES
+    Update by Proxx (30-06-2020)
+        - Pipeline aware Cmdlet
 #>
 
 function Set-Asset()
@@ -41,13 +45,16 @@ function Set-Asset()
     )]
 
     Param(
-        [parameter(mandatory = $true)]
+        [parameter(mandatory = $true, ValueFromPipelineByPropertyName = $true)]
         [int]$id,
 
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [string]$Name,
 
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [string]$Status_id,
 
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [string]$Model_id,
 
         [parameter(mandatory = $true)]
@@ -56,33 +63,65 @@ function Set-Asset()
         [parameter(mandatory = $true)]
         [string]$apiKey,
 
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [hashtable] $customfields
     )
+    Begin {}
 
-    $Values = @{
-        "name"      = $Name
-        "status_id" = $status_id
-        "model_id"  = $model_id
+    Process {
+
+        if (-Not $Input) {
+            $Input = New-Object -TypeName PSObject -Property @{
+                id = $id
+                url = $url
+                apiKey = $apiKey
+            }
+        }
+
+        ForEach($Item in $input)
+        {
+            $Values = @{}
+
+            if (-Not [String]::IsNullOrWhiteSpace($Name))
+            {
+                $Values.name = $Name
+            }
+
+            if (-Not [String]::IsNullOrWhiteSpace($Status_id))
+            {
+                $Values.status_id = $Status_id
+            }
+
+            if (-Not [String]::IsNullOrWhiteSpace($Model_id))
+            {
+                $Values.model_id = $Model_id
+            }
+
+            if ($customfields)
+            {
+                $Values += $customfields
+            }
+
+            $Body = $Values | ConvertTo-Json;
+
+            $Parameters = @{
+                Uri    = "$url/api/v1/hardware/$id"
+                Method = 'Put'
+                Body   = $Body
+                Token  = $apiKey
+            }
+            If ($PSCmdlet.ShouldProcess("ShouldProcess?"))
+            {
+                $result = Invoke-SnipeitMethod @Parameters
+            }
+            else
+            {
+                $result = $Parameters
+            }
+
+            $result
+        }
     }
 
-    if ($customfields)
-    {
-        $Values += $customfields
-    }
-
-    $Body = $Values | ConvertTo-Json;
-
-    $Parameters = @{
-        Uri    = "$url/api/v1/hardware/$id"
-        Method = 'Put'
-        Body   = $Body
-        Token  = $apiKey
-    }
-
-    If ($PSCmdlet.ShouldProcess("ShouldProcess?"))
-    {
-        $result = Invoke-SnipeitMethod @Parameters
-    }
-
-    $result
+    End {}
 }

@@ -41,15 +41,16 @@ function New-Asset()
     )]
 
     Param(
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [string]$tag,
 
-        [parameter(mandatory = $true)]
+        [parameter(mandatory = $true, ValueFromPipelineByPropertyName = $true)]
         [string]$Name,
 
-        [parameter(mandatory = $true)]
+        [parameter(mandatory = $true, ValueFromPipelineByPropertyName = $true)]
         [int]$Status_id,
 
-        [parameter(mandatory = $true)]
+        [parameter(mandatory = $true, ValueFromPipelineByPropertyName = $true)]
         [int]$Model_id,
 
         [parameter(mandatory = $true)]
@@ -58,38 +59,58 @@ function New-Asset()
         [parameter(mandatory = $true)]
         [string]$apiKey,
 
+        [parameter(ValueFromPipelineByPropertyName = $true)]
         [hashtable] $customfields
     )
 
-    $Values = @{
-        "name"      = $Name
-        "status_id" = $status_id
-        "model_id"  = $model_id
+    Begin {
+
     }
 
-    if ($PSBoundParameters.ContainsKey('tag'))
-    {
-        $Values += @{"asset_tag" = $tag}
+    Process {
+        $Values = @{}
+
+        if ($PSBoundParameters.ContainsKey('Name'))
+        {
+            $Values.name = $Name
+        }
+        if ($PSBoundParameters.ContainsKey('Status_id'))
+        {
+            $Values.status_id = $Status_id
+        }
+        if ($PSBoundParameters.ContainsKey('Model_id'))
+        {
+            $Values.model_id = $Model_id
+        }
+        if ($PSBoundParameters.ContainsKey('tag'))
+        {
+            $Values.asset_tag = $tag
+        }
+    
+        if ($PSBoundParameters.ContainsKey('customfields'))
+        {
+            $Values += $customfields
+        }
+    
+        $Body = $Values | ConvertTo-Json;
+    
+        $Parameters = @{
+            Uri    = "$url/api/v1/hardware"
+            Method = 'Post'
+            Body   = $Body
+            Token  = $apiKey
+        }
+    
+        If ($PSCmdlet.ShouldProcess("ShouldProcess?"))
+        {
+            $result = Invoke-SnipeitMethod @Parameters
+        }
+    
+        $result
     }
 
-    if ($customfields)
-    {
-        $Values += $customfields
+    End {
+
     }
-
-    $Body = $Values | ConvertTo-Json;
-
-    $Parameters = @{
-        Uri    = "$url/api/v1/hardware"
-        Method = 'Post'
-        Body   = $Body
-        Token  = $apiKey
-    }
-
-    If ($PSCmdlet.ShouldProcess("ShouldProcess?"))
-    {
-        $result = Invoke-SnipeitMethod @Parameters
-    }
-
-    $result
+    
 }
